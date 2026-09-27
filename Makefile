@@ -929,8 +929,8 @@ LD_FLAGS_LTO_CLANG += -mllvm -import-instr-limit=5
 endif
 
 ifeq ($(shell echo $(CONFIG_CC_VERSION_TEXT) | grep -qE 'Android|Neutron' && echo true || echo false),true)
-KBUILD_CFLAGS += -mllvm -regalloc-enable-advisor=release
-LD_FLAGS_LTO_CLANG += -mllvm -regalloc-enable-advisor=release
+KBUILD_CFLAGS += -mllvm -regalloc-enable-advisor=default
+LD_FLAGS_LTO_CLANG += -mllvm -regalloc-enable-advisor=default
 endif
 
 KBUILD_LDFLAGS += $(LD_FLAGS_LTO_CLANG)
