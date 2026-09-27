@@ -225,6 +225,37 @@ build_kernel() {
     make ${MAKE_ARGS} -j$CORES || abort
 }
 
+build_boot() {
+
+    cp -a out/arch/arm64/boot/Image build/out/$MODEL
+	
+    echo "-----------------------------------------------"
+    echo "Building boot.img RAMDisk..."
+    mkdir -p build/out/$MODEL/boot_ramdisk00
+
+    # Copy common files for boot.img's RAMDisk
+    cp -a build/ramdisk/boot/boot_ramdisk00 build/out/$MODEL
+
+    pushd build/out/$MODEL/boot_ramdisk00 > /dev/null
+    find . ! -name . | LC_ALL=C sort | cpio -o -H newc -R root:root | lz4 -l > ../boot_ramdisk || abort
+    popd > /dev/null
+
+    echo "-----------------------------------------------"
+    echo "Building boot.img..."
+
+    OUTPUT_FILE=build/out/$MODEL/boot.img
+    RAMDISK_00=build/out/$MODEL/boot_ramdisk
+    KERNEL=build/out/$MODEL/Image
+    HEADER_VERSION=3
+    OS_VERSION=16.0.0
+    OS_PATCH_LEVEL=2025-11
+    CMDLINE="androidboot.selinux=permissive loop.max_part=7"
+
+	python3 toolchain/mkbootimg/mkbootimg.py --header_version $HEADER_VERSION --cmdline "$CMDLINE" --ramdisk $RAMDISK_00 \
+	--os_version $OS_VERSION --os_patch_level $OS_PATCH_LEVEL --kernel $KERNEL --output $OUTPUT_FILE || abort
+	fi  
+}
+
 build_dtb() {
     echo "-----------------------------------------------"
     echo "Building DTB image..."
@@ -445,8 +476,11 @@ if [[ "$KSU_OPTION" != "y" ]]; then
 fi
 
 build_kernel
+build_boot
 build_dtb
 build_modules
+build_vendor_boot
+build_zip
 
 popd > /dev/null
 echo "-----------------------------------------------"
