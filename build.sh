@@ -130,18 +130,16 @@ prep_toolchain() {
         echo -e "INFO: Using Neutron Clang..."
     fi
 
-    ## Set PATH
-    export PATH="${TC_DIR}/${CLANG_DIR}/bin:${PATH}"
-
 }
 
 #Setup toolchain env
+PATH="${TC_DIR}/${CLANG_DIR}/bin:${PATH}"
 get_toolchain $CLANG_TYPE
 prep_toolchain $CLANG_TYPE
 
 MAKE_ARGS="
-LLVM=1 \
-LLVM_IAS=1 \
+LLVM=${LLVM:-1} \
+LLVM_IAS=${LLVM_IAS:-1} \
 ARCH=arm64 \
 O=out
 "
@@ -215,7 +213,7 @@ build_kernel() {
     echo "Building kernel using "$KERNEL_DEFCONFIG""
     echo "Generating configuration file..."
     echo "-----------------------------------------------"
-    make ${MAKE_ARGS} -j$CORES exynos2100_defconfig $MODEL.config $RECOVERY $KSU $SUSFS || abort
+    make ${MAKE_ARGS} -j$CORES exynos2100_defconfig $MODEL.config $KSU || abort
 
     set_localversion
 
