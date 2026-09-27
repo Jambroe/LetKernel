@@ -89,7 +89,6 @@ NEU_DIR="$TC_DIR/neutronclang"
 #Aosp Clang
 AO_VER="clang-r614150"
 
-PATH=$CLANG_DIR/bin:$PATH
 
 # Check if toolchain exists
 get_toolchain() {
@@ -122,7 +121,23 @@ fi
 fi
 }
 
+prep_toolchain() {
+    if [[ $1 = "aosp" ]]; then
+        CLANG_DIR="$AO_DIR"
+        echo -e "INFO: Using AOSP Clang..."
+    elif [[ $1 = "neutron" ]]; then
+        CLANG_DIR="$NEU_DIR"
+        echo -e "INFO: Using Neutron Clang..."
+    fi
+
+    ## Set PATH
+    export PATH="${TC_DIR}/${CLANG_DIR}/bin:${PATH}"
+
+}
+
+#Setup toolchain env
 get_toolchain $CLANG_TYPE
+prep_toolchain $CLANG_TYPE
 
 MAKE_ARGS="
 LLVM=1 \
