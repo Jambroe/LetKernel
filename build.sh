@@ -146,7 +146,7 @@ LLVM_IAS=1 \
 ARCH=arm64 \
 O=out \
 LD=$LINKER \
-CROSS_COMPILE=$CCARM64_PREFIX \
+CROSS_COMPILE=$CCARM64_PREFIX
 "
 
 # Define specific variables
