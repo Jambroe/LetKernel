@@ -20,9 +20,9 @@ unset_flags()
 Usage: $(basename "$0") [options]
 Options:
     -m, --model [value]    Specify the model code of the phone
-    -k, --ksu [y/N]        Include KernelSU
-    -s, --susfs [y/N]      Include SuSFS
-    -r, --recovery [y/N]   Compile kernel for an Android Recovery																 
+    -c, --clang [value]    Aosp Clang or Neutron Clang
+    -k, --ksu [y/N]        Include KernelSU + SUSFS
+    -r, --resuki [y/N]     Include ResukiSU + SUSFS
 EOF
 }
 
@@ -32,16 +32,16 @@ while [[ $# -gt 0 ]]; do
             MODEL="$2"
             shift 2
             ;;
+        --clang|-c)
+            CLANG_TYPE="$2"
+            shift 2
+            ;;
         --ksu|-k)
             KSU_OPTION="$2"
             shift 2
             ;;
-        --susfs|-s)
-            SUSFS_OPTION="$2"
-            shift 2
-            ;;
-        --recovery|-r)
-            RECOVERY_OPTION="$2"
+        --resuki|-r)
+            RESUKI_OPTION="$2"
             shift 2
             ;;
         *)\
@@ -56,7 +56,7 @@ enable_susfs() {
     KSUN_DIR="$PWD/KernelSU-Next/kernel"
     SUS_MARKER="config KSU_SUSFS"
 
-    if [[ "$SUSFS_OPTION" == "y" ]]; then
+    if [[ "$KSU_OPTIONS" == "y" ]]; then
 
         if grep -q "$SUS_MARKER" "$KSUN_DIR/Kconfig" 2>/dev/null; then
             echo "SuSFS already enabled, skipping patch."
@@ -83,23 +83,46 @@ pushd $(dirname "$0") > /dev/null
 CORES=$(nproc)
 
 # Define toolchain variables
-CLANG_DIR=$PWD/toolchain/clang-r614150
+TC_DIR="$PWD/toolchain"
+AO_DIR="$TC_DIR/aospclang"
+NEU_DIR="$TC_DIR/neutronclang"
+#Aosp Clang
+AO_VER="clang-r614150"
+
 PATH=$CLANG_DIR/bin:$PATH
 
 # Check if toolchain exists
-if [ ! -f "$CLANG_DIR/bin/clang-23" ]; then
+get_toolchain() {
+if [[ $1 = "aosp" ]]; then 
+if [ ! -d "$AO_DIR" ]; then
     echo "-----------------------------------------------"
-    echo "Toolchain not found! Downloading..."
+    echo "AOSP Clang not found! Downloading $AO_VER..."
     echo "-----------------------------------------------"
-    rm -rf $CLANG_DIR
-    mkdir -p $CLANG_DIR
-    pushd $CLANG_DIR > /dev/null
-    curl -LJOk https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r614150.tar.gz
-    tar xf mirror-goog-main-llvm-toolchain-source-clang-r614150.tar.gz
-    rm mirror-goog-main-llvm-toolchain-source-clang-r614150.tar.gz
+    rm -rf $AO_DIR
+    mkdir -p $AO_DIR
+    pushd $AO_DIR > /dev/null
+    curl -LJOk https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/$AO_VER.tar.gz
+    tar xf mirror-goog-main-llvm-toolchain-source-$AO_VER.tar.gz
+    rm mirror-goog-main-llvm-toolchain-source-$AO_VER.tar.gz
     echo "Cleaning up..."
     popd > /dev/null
 fi
+fi
+if [[ $1 = "neutron" ]]; then
+if ! [ -d "$NEU_DIR" ]; then
+    echo "-----------------------------------------------"
+    echo "NEUTRON Clang not found! Downloading..."
+    echo "-----------------------------------------------"
+    rm -rf $NEU_DIR
+    mkdir -p $NEU_DIR
+    pushd $NEU_DIR > /dev/null
+    bash <(curl -s "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman") -S
+    popd > /dev/null
+fi
+fi
+}
+
+get_toolchain $CLANG_TYPE
 
 MAKE_ARGS="
 LLVM=1 \
@@ -127,21 +150,12 @@ p3s)
     exit
 esac
 
-if [[ "$RECOVERY_OPTION" == "y" ]]; then
-    RECOVERY=recovery.config
-    KSU_OPTION=n
-    SUSFS_OPTION=n
-fi
-
 if [ -z "$KSU_OPTION" ]; then
     read -p "Include KernelSU (y/N): " KSU_OPTION
 fi
 
 if [[ "$KSU_OPTION" == "y" ]]; then
     KSU=ksu.config
-fi
-
-if [[ "$SUSFS_OPTION" == "y" ]]; then
     SUSFS=susfs.config
 fi
 
@@ -157,18 +171,10 @@ set_localversion() {
     LV_SUFFIX=""
 
     # Set Kernel Version Release
-    if [[ "$RECOVERY_OPTION" != "y" ]]; then
-        VRSN=$KVER
-    else
-        VRSN=$RVER
-    fi
-
-    if [[ "$RECOVERY_OPTION" == "y" ]]; then
-        LV_SUFFIX="-TWRP"
-    elif [[ "$KSU_OPTION" == "y" && "$SUSFS_OPTION" == "y" ]]; then
+    if [[ "$KSU_OPTION" == "y" ]]; then
         LV_SUFFIX="-KSUN-SUSFS"
-    elif [[ "$KSU_OPTION" == "y" ]]; then
-        LV_SUFFIX="-KSUN"
+    elif [[ "SUKI_OPTION" == "y" ]]; then
+        LV_SUFFIX="RESUKI-SUSFS"
     else
         LV_SUFFIX="-VANILLA"
     fi
@@ -184,25 +190,10 @@ build_kernel() {
     echo "-----------------------------------------------"
     echo "Defconfig: "$KERNEL_DEFCONFIG""
 
-    if [[ "$RECOVERY_OPTION" == "y" ]]; then
-        RECOVERY=recovery.config
-        KSU_OPTION=n
-        SUSFS_OPTION=n
-    fi
     if [ -z "$KSU" ]; then
         echo "KSU: N"
     else
         echo "KSU: $KSU"
-    fi
-    if [ -z "$SUSFS" ]; then
-        echo "SUSFS: N"
-    else
-        echo "SUSFS: $SUSFS"
-    fi
-    if [ -z "$RECOVERY" ]; then
-    echo "Recovery: N"
-    else
-        echo "Recovery: Y"
     fi
 
     echo "-----------------------------------------------"
@@ -216,38 +207,6 @@ build_kernel() {
     echo "Building kernel..."
     echo "-----------------------------------------------"
     make ${MAKE_ARGS} -j$CORES || abort
-}
-
-build_boot() {
-
-    cp -a out/arch/arm64/boot/Image build/out/$MODEL
-
-    if [ -z "$RECOVERY" ]; then			   
-    echo "-----------------------------------------------"
-    echo "Building boot.img RAMDisk..."
-    mkdir -p build/out/$MODEL/boot_ramdisk00
-
-    # Copy common files for boot.img's RAMDisk
-    cp -a build/ramdisk/boot/boot_ramdisk00 build/out/$MODEL
-
-    pushd build/out/$MODEL/boot_ramdisk00 > /dev/null
-    find . ! -name . | LC_ALL=C sort | cpio -o -H newc -R root:root | lz4 -l > ../boot_ramdisk || abort
-    popd > /dev/null
-
-    echo "-----------------------------------------------"
-    echo "Building boot.img..."
-
-    OUTPUT_FILE=build/out/$MODEL/boot.img
-    RAMDISK_00=build/out/$MODEL/boot_ramdisk
-    KERNEL=build/out/$MODEL/Image
-    HEADER_VERSION=3
-    OS_VERSION=16.0.0
-    OS_PATCH_LEVEL=2025-11
-    CMDLINE="androidboot.selinux=permissive loop.max_part=7"
-
-	python3 toolchain/mkbootimg/mkbootimg.py --header_version $HEADER_VERSION --cmdline "$CMDLINE" --ramdisk $RAMDISK_00 \
-	--os_version $OS_VERSION --os_patch_level $OS_PATCH_LEVEL --kernel $KERNEL --output $OUTPUT_FILE || abort
-	fi  
 }
 
 build_dtb() {
@@ -463,9 +422,6 @@ build_zip() {
 
 if [[ "$KSU_OPTION" != "y" ]]; then
 
-    sed -i "\|$KSU_VAR|d" "$KCONFIG_FILE"
-
-else
     enable_susfs
     
     if ! grep -Fxq "$KSU_VAR" "$KCONFIG_FILE"; then
@@ -475,14 +431,8 @@ else
 fi
 
 build_kernel
-build_boot
 build_dtb
 build_modules
-
-if [ -z "$RECOVERY" ]; then				   
-build_vendor_boot
-build_zip
-fi 
 
 popd > /dev/null
 echo "-----------------------------------------------"

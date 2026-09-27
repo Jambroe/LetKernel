@@ -2,41 +2,33 @@ name: Kernel Build
 
 on:
   workflow_dispatch:
+    description: Automatic Build Kernel
     inputs:
-      tag_name:
-        description: "Tag name (example: v1.0)"
+      device_name:
+        description: "device: r9s,o1s,t2s,p3s"
         required: true
-      release_name:
-        description: "Release name"
+        default: "r9s"
+      clang_name:
+        description: "clang: aosp or neutron"
         required: true
-        default: "Automated Kernel Build"
-  push:
-    tags:
-      - "v*"
+        default: "aosp"
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
-
+    runs-on: ubuntu-26.04
+   
     strategy:
       fail-fast: false
       matrix:
         include:
-          - model: r9s
-            branch: rebased-11
+          - model: ${{ github.event.inputs.device_name }}
+            clang: ${{ github.event.inputs.clang_name }}
             variant: ksu
-          - model: r9s
-            branch: rebased-11
-            variant: susfs
-          - model: r9s
-            branch: rebased-11
-            variant: vanilla
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        ref: ${{ matrix.branch }}
         fetch-depth: 0
         submodules: recursive
 
@@ -55,8 +47,8 @@ jobs:
       run: |
         if [ "${{ matrix.variant }}" = "ksu" ]; then
           echo "FLAGS=-k y" >> $GITHUB_OUTPUT
-        elif [ "${{ matrix.variant }}" = "susfs" ]; then
-          echo "FLAGS=-k y -s y" >> $GITHUB_OUTPUT
+        elif [ "${{ matrix.variant }}" = "resuki" ]; then
+          echo "FLAGS=-r y" >> $GITHUB_OUTPUT
         else
           echo "FLAGS=" >> $GITHUB_OUTPUT
         fi
@@ -64,30 +56,10 @@ jobs:
     - name: Run kernel build
       run: |
         chmod +x ./build.sh
-        ./build.sh -m ${{ matrix.model }} ${{ steps.vars.outputs.FLAGS }}
+        ./build.sh -m ${{ github.event.inputs.device_name }} -c ${{ github.event.inputs.clang_name }} ${{ steps.vars.outputs.FLAGS }}
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.model }}-${{ matrix.branch }}-${{ matrix.variant }}
-        path: build/out/${{ matrix.model }}/*.zip
-
-
-  release:
-    needs: build
-    runs-on: ubuntu-24.04
-
-    steps:
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-
-    - name: Create Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ github.event.inputs.tag_name }}
-        name: ${{ github.event.inputs.release_name || github.ref_name }}
-        files: artifacts/**/*.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: ${{ github.event.inputs.device_name }}-${{ github.event.inputs.clang_name }}-${{ matrix.variant }}
+        path: build/out/${{ github.event.inputs.device_name }}/*.zip
