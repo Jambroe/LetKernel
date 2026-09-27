@@ -136,9 +136,10 @@ prep_toolchain() {
 }
 
 #Setup toolchain env
-PATH="${TC_DIR}/${CLANG_DIR}/bin:${PATH}"
 get_toolchain $CLANG_TYPE
 prep_toolchain $CLANG_TYPE
+
+PATH="${TC_DIR}/${CLANG_DIR}/bin:${PATH}"
 
 MAKE_ARGS="
 LLVM=1 \
@@ -191,7 +192,7 @@ set_localversion() {
     # Set Kernel Version Release
     if [[ "$KSU_OPTION" == "y" ]]; then
         LV_SUFFIX="-KSUN-SUSFS"
-    elif [[ "SUKI_OPTION" == "y" ]]; then
+    elif [[ "$SUKI_OPTION" == "y" ]]; then
         LV_SUFFIX="RESUKI-SUSFS"
     else
         LV_SUFFIX="-VANILLA"
