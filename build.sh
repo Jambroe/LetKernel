@@ -4,7 +4,6 @@ KCONFIG_FILE="drivers/Kconfig"
 KSU_VAR='source "drivers/kernelsu/Kconfig"'
 KVER="-v7"
 RVER="-v2.6"
-LINKER="${LINKER:-ld.lld}"
 
 abort()
 {
@@ -139,15 +138,13 @@ prep_toolchain() {
 get_toolchain $CLANG_TYPE
 prep_toolchain $CLANG_TYPE
 
-PATH="${TC_DIR}/${CLANG_DIR}/bin:${PATH}"
+PATH="${CLANG_DIR}/bin:${PATH}"
 
 MAKE_ARGS="
 LLVM=1 \
 LLVM_IAS=1 \
 ARCH=arm64 \
-O=out \
-LD=$LINKER \
-CROSS_COMPILE=$CCARM64_PREFIX
+O=out
 "
 
 # Define specific variables
