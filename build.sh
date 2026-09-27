@@ -4,6 +4,7 @@ KCONFIG_FILE="drivers/Kconfig"
 KSU_VAR='source "drivers/kernelsu/Kconfig"'
 KVER="-v7"
 RVER="-v2.6"
+LINKER="${LINKER:-ld.lld}"
 
 abort()
 {
@@ -124,9 +125,11 @@ fi
 prep_toolchain() {
     if [[ $1 = "aosp" ]]; then
         CLANG_DIR="$AO_DIR"
+		CCARM64_PREFIX=aarch64-linux-gnu-
         echo -e "INFO: Using AOSP Clang..."
     elif [[ $1 = "neutron" ]]; then
         CLANG_DIR="$NEU_DIR"
+		CCARM64_PREFIX=aarch64-linux-gnu-
         echo -e "INFO: Using Neutron Clang..."
     fi
 
@@ -138,10 +141,12 @@ get_toolchain $CLANG_TYPE
 prep_toolchain $CLANG_TYPE
 
 MAKE_ARGS="
-LLVM=${LLVM:-1} \
-LLVM_IAS=${LLVM_IAS:-1} \
+LLVM=1 \
+LLVM_IAS=1 \
 ARCH=arm64 \
-O=out
+O=out \
+LD=$LINKER \
+CROSS_COMPILE=$CCARM64_PREFIX \
 "
 
 # Define specific variables
