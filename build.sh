@@ -425,10 +425,8 @@ build_zip() {
     version=${version:1}
     DATE=`date +"%d-%m-%Y_%H-%M-%S"`
 
-    if [[ "$KSU_OPTION" == "y" && "$SUSFS_OPTION" == "y" ]]; then
+    if [[ "$KSU_OPTION" == "y" ]]; then
         NAME="${version}${KVER}_${MODEL}_KSUN_SUSFS_OFFICIAL_${DATE}.zip"
-    elif [[ "$KSU_OPTION" == "y" ]]; then
-        NAME="${version}${KVER}_${MODEL}_KSUN_OFFICIAL_${DATE}.zip"
     else
         NAME="${version}${KVER}_${MODEL}_VANILLA_OFFICIAL_${DATE}.zip"
     fi
